@@ -1,1 +1,4 @@
-DATA/
+SRC/DATA/
+SRC/__pycache__/
+SRC/output/
+SRC/.DS_Store
