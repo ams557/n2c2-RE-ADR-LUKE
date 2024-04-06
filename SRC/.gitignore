@@ -1,4 +1,4 @@
-SRC/DATA/
-SRC/__pycache__/
-SRC/output/
-SRC/.DS_Store
+DATA/
+__pycache__/
+output/
+.DS_Store
