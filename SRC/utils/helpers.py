@@ -1,31 +1,48 @@
 from nltk.tokenize import sent_tokenize
-import re
-
+import re, string
 
 def find_BOS_index(sentences, pos):
-    if not isinstance(sentences,list):
+    if not isinstance(sentences, list):
         sentences = sent_tokenize(sentences)
-    start_index = 0
+    sentence_start = 0
     for sentence in sentences:
         sentence_length = len(sentence)
-        if start_index + sentence_length >= pos:
-            return start_index
-        start_index += sentence_length
-    return None
+        if sentence_start + sentence_length >= pos:
+            break
+        sentence_start += sentence_length
+    return max(0,sentence_start)
 
-def find_EOS_index(sentences, pos):
+# def find_BOS_index(text, pos, length):
+#     if pos >= length:
+#         return None
+#     sentence_start = pos
+#     while sentence_start > 0 and text[sentence_start] not in '?!.':
+#         sentence_start -= 1
+#     return max(0,sentence_start + 2)
+
+# def find_EOS_index(text,pos,length):
+#     if pos >= length:
+#         return None
+#     sentence_end = pos
+#     while sentence_end < length and text[sentence_end] not in '?!.':
+#         sentence_end+=1
+#     return min(sentence_end - 1,length)
+
+
+def find_EOS_index(sentences, pos, length):
     start_idx = 0
     for sentence in sentences:
         sentence_length = len(sentence)
         if start_idx + sentence_length >= pos:
-            return start_idx + sentence_length
+            break
         start_idx += sentence_length
-    return None
+    return min(start_idx + sentence_length,length)
 
-def find_sentences_around_match(text, begin, end):
+def find_sentences_around_match(text,begin,end):
     sentences = sent_tokenize(text)
-    sent_start_idx = find_BOS_index(sentences,begin)
-    sent_end_idx = find_EOS_index(sentences,end)
+    length = len(text)
+    sent_start_idx = find_BOS_index(text,begin)
+    sent_end_idx = find_EOS_index(text,end,length)
     return text[sent_start_idx:sent_end_idx]
 
 def combine_and_norm_lists(start_list, end_list, norm_to=0):

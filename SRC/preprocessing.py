@@ -37,15 +37,13 @@ def BRATtoDFconvert(path):
     annotations['relations'].drop(columns=['tag'],inplace=True)
     df = pd.merge(annotations['relations'],annotations['entities'][['file','tag','entity_span','entity']],left_on=['file','relation_start'],right_on=['file','tag'])
     df.drop(columns=['tag','relation_start'],inplace=True)
-    df.rename(columns={'entity_span' : 'relation_start','entity' : 'start_entity'},inplace=True)
+    df.rename(columns={'entity_span' : 'relation_start','entity' : 'start_entity', 'relation_name' : 'string_id'},inplace=True)
     df = pd.merge(df,annotations['entities'][['file','tag','entity_span','entity']],left_on=['file','relation_end'],right_on=['file','tag'])
     df.drop(columns=['tag','relation_end'],inplace=True)
     df.rename(columns={'entity_span' : 'relation_end', 'entity' :'end_entity'},inplace=True)
-    range_df = range(len(df))
-    df['entities'] = [[df['start_entity'],df['end_entity']] for i in range_df]
-    # df['entities'] = df.apply(lambda row : [row['start_entity'],row['end_entity']], axis=1)
+    df['entities'] = [[start, end] for start, end in zip(df['start_entity'], df['end_entity'])]
     df.drop(columns=['start_entity','end_entity'],inplace=True)
-    df['original_article'] = df.apply(lambda row : read_file(TRAINING_DIR + row['file'] + '.txt'), axis=1)
+    df['original_article'] = [read_file(path + file + '.txt') for file in df['file']]
     df.drop(columns='file')
     df['start_idx'] = df.apply(lambda row : find_smallest_first_element(row, 'relation_start', 'relation_end'), axis=1)
     df['end_idx'] = df.apply(lambda row : find_largest_last_element(row, 'relation_start', 'relation_end'), axis=1)
@@ -53,6 +51,8 @@ def BRATtoDFconvert(path):
     df['sentences'] = df.apply(lambda row : find_sentences_around_match(row['original_article'],row['start_idx'],row['end_idx']),axis=1)
     df['BOS_idx'] = df.apply(lambda row : find_BOS_index(row['original_article'],row['start_idx']),axis=1)
     df['entity_spans'] = df.apply(lambda row : combine_and_norm_lists(row['relation_start'], row['relation_end'],row['BOS_idx']), axis=1)
+    cols = ['end_idx', 'entity_spans', 'entities','match','original_article','sentences','start_idx','string_id']
+    df = df[cols]
     return df
 
 def grab_entity_info(line):
@@ -61,10 +61,7 @@ def grab_entity_info(line):
     entity_start = int(tags[1])
     entity_end = int(tags[-1])
     df = pd.DataFrame({'tag' : line[0], 'entity_name' : entity_name, 'entity_span' : [[entity_start, entity_end]], 'entity' : line[-1]},index=[0],dtype=object)
-    # df['entity_span'] = 
     return df
-    
-    # return (entity_name, [entity_start, entity_end], line[-1])
 
 def grab_relation_info(line):
     tags = line[1].split(" ")
