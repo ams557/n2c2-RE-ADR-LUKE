@@ -1,52 +1,58 @@
 from nltk.tokenize import sent_tokenize
+import nltk.tokenize.punkt as pkt
 import re, string
+import numpy as np
 
-def find_BOS_index(sentences, pos):
-    if not isinstance(sentences, list):
-        sentences = sent_tokenize(sentences)
-    sentence_start = 0
+class CustomLanguageVars(pkt.PunktLanguageVars):
+
+    _period_context_fmt = r"""
+        \S*                          # some word material
+        %(SentEndChars)s             # a potential sentence ending
+        (\s*)                        # capture trailing whitespace
+        (?=(?P<after_tok>
+            %(NonWord)s              # either other punctuation
+            |
+            (?P<next_tok>\S+)     #  <-- Normally you would have \s+ here
+        ))"""
+
+custom_tknzr = pkt.PunktSentenceTokenizer(lang_vars=CustomLanguageVars())
+
+def find_BOS_index(sentences, i):
+    char_index = 0
+    sent_index = 0
     for sentence in sentences:
-        sentence_length = len(sentence)
-        if sentence_start + sentence_length >= pos:
-            break
-        sentence_start += sentence_length
-    return max(0,sentence_start)
-
-# def find_BOS_index(text, pos, length):
-#     if pos >= length:
-#         return None
-#     sentence_start = pos
-#     while sentence_start > 0 and text[sentence_start] not in '?!.':
-#         sentence_start -= 1
-#     return max(0,sentence_start + 2)
-
-# def find_EOS_index(text,pos,length):
-#     if pos >= length:
-#         return None
-#     sentence_end = pos
-#     while sentence_end < length and text[sentence_end] not in '?!.':
-#         sentence_end+=1
-#     return min(sentence_end - 1,length)
-
-
-def find_EOS_index(sentences, pos, length):
-    start_idx = 0
+        rel_char_index = 0
+        for char in sentence:
+            char_index+=1
+            if char_index > i:
+                return i - (len(sentences[sent_index][0:rel_char_index])) -1
+            rel_char_index+=1
+        sent_index+=1
+    print(sent_index)
+  
+def find_EOS_index(sentences, j):
+    char_index = 0
+    sent_index = 0
     for sentence in sentences:
-        sentence_length = len(sentence)
-        if start_idx + sentence_length >= pos:
-            break
-        start_idx += sentence_length
-    return min(start_idx + sentence_length,length)
+        rel_char_index = 0
+        for char in sentence:
+            char_index+=1
+            if char_index >= j:
+                return j + len(sentences[sent_index][rel_char_index:]) + 1
+            rel_char_index+=1
+        sent_index+=1
 
 def find_sentences_around_match(text,begin,end):
-    sentences = sent_tokenize(text)
+    sentences = custom_tknzr.tokenize(text)
     length = len(text)
     sent_start_idx = find_BOS_index(text,begin)
-    sent_end_idx = find_EOS_index(text,end,length)
+    sent_end_idx = find_EOS_index(text,end)
     return text[sent_start_idx:sent_end_idx]
 
-def combine_and_norm_lists(start_list, end_list, norm_to=0):
-    return [[start_list[i] - norm_to, end_list[i] - norm_to] for i in range(len(start_list))]
+# def combine_and_norm_lists(start_list, end_list, norm_to=0):
+#     return [np.array([start_list[i] - norm_to, end_list[i] - norm_to],dtype=object) for i in range(len(start_list))]
+def norm_list(list,norm_to=0):
+    return np.array([list[0] - norm_to,list[1]-norm_to],dtype=object)
 
 def find_smallest_first_element(row,list1,list2):
     e1 = row[list1][0]
@@ -72,3 +78,24 @@ def read_file(path):
     if path.endswith('.txt'):
         text = re.sub("\n", " ", text)
     return text
+
+
+# def find_BOS_index(sentences, pos):
+#     if not isinstance(sentences,list):
+#         sentences = sent_tokenize(sentences)
+#     char_index = 0
+#     for sentence in sentences:
+#         len_sentence = len(sentence)
+#         if char_index + len_sentence >= pos:
+#             return char_index
+#         char_index += len_sentence + 1
+#     return char_index
+
+# def find_EOS_index(sentences, pos):
+#     char_index = 0
+#     for sentence in sentences:
+#         len_sentence = len(sentence)
+#         if pos <= char_index + len_sentence:
+#             return char_index + len_sentence
+#         char_index += len_sentence + 1
+#     return char_index - 1

@@ -2,3 +2,5 @@ DATA/
 *__pycache__/
 SRC/output/
 .DS_Store
+wandb/
+LUKE/
