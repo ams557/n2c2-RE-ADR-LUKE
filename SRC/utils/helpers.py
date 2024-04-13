@@ -2,6 +2,7 @@ from nltk.tokenize import sent_tokenize
 import nltk.tokenize.punkt as pkt
 import re, string
 import numpy as np
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 
 class CustomLanguageVars(pkt.PunktLanguageVars):
 
@@ -99,3 +100,14 @@ def read_file(path):
 #             return char_index + len_sentence
 #         char_index += len_sentence + 1
 #     return char_index - 1
+
+def compute_metrics(eval_preds):
+    logits, labels = eval_preds
+    preds = logits.argmax(-1)
+    print(confusion_matrix(labels, preds))
+    result = {
+        "accuracy": accuracy_score(labels, preds),
+        "f1_micro": f1_score(labels, preds, average="micro"),
+        "f1_macro": f1_score(labels, preds, average="macro"),
+    }
+    return result
