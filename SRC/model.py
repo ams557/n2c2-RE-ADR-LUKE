@@ -7,10 +7,19 @@ import torch
 import torch.nn.functional as F
 from torch.optim import AdamW
 import torchmetrics
+from sklearn.model_selection import train_test_split
+from config import *
+from dataset import *
+import wandb
+import matplotlib.pyplot as plt
 
 class LUKE(pl.LightningModule):
-    def __init__(self,num_labels,learning_rate):
+    def __init__(self,num_labels,learning_rate,dataset,tokenizer,label2id):
         super().__init__()
+        self.dataset = dataset
+        self.tokenizer = tokenizer
+        self.label2id = label2id
+        self.train_ds, self.valid_ds,self.test_ds = self.create_datasets(self.dataset,self.tokenizer,self.label2id)
         self.learning_rate = learning_rate
         self.model = LukeForEntityPairClassification.from_pretrained("studio-ousia/luke-base", num_labels=num_labels)
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -34,16 +43,16 @@ class LUKE(pl.LightningModule):
                             entity_attention_mask=entity_attention_mask, entity_position_ids=entity_position_ids)
 
     def common_step(self,batch,batch_idx):
-        inputs, labels = batch
-        outputs = self(inputs)
+        labels = batch['label']
+        del batch['label']
+        outputs = self(**batch)
         logits = outputs.logits
         preds = logits.argmax(-1)
-        loss = criterion(logits,labels)
+        loss = self.criterion(logits,labels)
         return loss, preds, labels
 
     def training_step(self,batch,batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
-        loss = self.criterion(logits,labels)
         self.log("training_loss",loss)
         return loss
     
@@ -59,7 +68,7 @@ class LUKE(pl.LightningModule):
         self.val_cm.update(preds,labels)
         return loss
     
-    def on_validation_epoch_end(self,validation_step_outputs):
+    def on_validation_epoch_end(self):
         self.log('val_accuracy',self.val_accuracy.compute())
         self.log('val_precision',self.val_precision.compute())
         self.log('val_recall',self.val_recall.compute())
@@ -90,7 +99,7 @@ class LUKE(pl.LightningModule):
         self.test_cm.update(preds,labels)
         return loss
     
-    def on_test_epoch_end(self,validation_step_outputs):
+    def on_test_epoch_end(self):
         self.log('test_accuracy',self.test_accuracy.compute())
         self.log('test_precision',self.test_precision.compute())
         self.log('test_recall',self.test_recall.compute())
@@ -108,12 +117,21 @@ class LUKE(pl.LightningModule):
         self.test_F1_micro.reset()
         self.test_F1_macro.reset()
         self.test_cm.reset()
+    
+    def create_datasets(self,dataset,tokenizer,label2id):
+        train_df, val_df = train_test_split(dataset['train'], test_size=0.2, random_state=RANDOM_STATE, shuffle=True)
+        test_df = dataset['test']
+        train_ds = RelationExtractionDataset(data=train_df,tokenizer=tokenizer,label2id=label2id)
+        valid_ds = RelationExtractionDataset(data=val_df,tokenizer=tokenizer,label2id=label2id)
+        test_ds = RelationExtractionDataset(data=test_df,tokenizer=tokenizer,label2id=label2id)
+        return train_ds, valid_ds, test_ds
 
     def configure_optimizers(self):
         return AdamW(self.parameters(),lr=self.learning_rate)
     def train_dataloader(self):
-        return train_dataloader
+        return DataLoader(self.train_ds, batch_size=4, shuffle=True)
     def val_dataloader(self):
-        return valid_dataloader
+        return DataLoader(self.valid_ds, batch_size=2)
     def test_dataloader(self):
-        return test_dataloader
+        return DataLoader(self.test_ds,batch_size=2)
+
