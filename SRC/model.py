@@ -129,9 +129,9 @@ class LUKE(pl.LightningModule):
     def configure_optimizers(self):
         return AdamW(self.parameters(),lr=self.learning_rate)
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=4, shuffle=True)
+        return DataLoader(self.train_ds, batch_size=4, shuffle=True,num_workers=4)
     def val_dataloader(self):
-        return DataLoader(self.valid_ds, batch_size=2)
+        return DataLoader(self.valid_ds, batch_size=2,num_workers=4)
     def test_dataloader(self):
-        return DataLoader(self.test_ds,batch_size=2)
+        return DataLoader(self.test_ds,batch_size=2,num_workers=4)
 
