@@ -14,7 +14,7 @@ class LukeREmodel(pl.LightningModule):
     def __init__(self, learning_rate, id2label):
         super().__init__()
         self.id2label = id2label
-        self.num_labels = len(self.label2id)
+        num_labels = len(self.id2label)
         self.learning_rate = learning_rate
         if num_labels is None:
             raise ValueError("must provide num_labels.")
@@ -103,7 +103,6 @@ class LukeREmodel(pl.LightningModule):
         val_R_class = self.val_recall.compute()
         val_F_class = self.val_F1.compute()
         for i, (F, P, R) in enumerate(zip(val_F_class,val_P_class,val_R_class)):
-            # relation = id2label[self['label'][1].item]
             self.log(f'val_F_class_{i}', F, on_epoch=True, prog_bar=True)
             self.log(f'val_P_class_{i}', P, on_epoch=True, prog_bar=True)
             self.log(f'val_R_class_{i}', F, on_epoch=True, prog_bar=True)
