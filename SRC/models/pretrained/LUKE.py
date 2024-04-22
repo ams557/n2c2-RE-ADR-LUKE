@@ -21,6 +21,10 @@ class LukeREmodel(pl.LightningModule):
         self.model = LukeForEntityPairClassification.from_pretrained("studio-ousia/luke-base", num_labels=num_labels)
         self.criterion = torch.nn.CrossEntropyLoss()
 
+        # Training
+        self.train_F1_micro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='micro')
+        self.train_F1_macro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='macro')
+
         # Validation
         ## Non-Averaged
         self.val_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels,average=None)
@@ -41,7 +45,7 @@ class LukeREmodel(pl.LightningModule):
         self.val_F1_macro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='macro')
 
         ## Confusion Matrix
-        self.val_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass",normalize='true')
+        self.val_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass")
 
         # Test
         self.test_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels,average=None)
@@ -62,7 +66,7 @@ class LukeREmodel(pl.LightningModule):
         self.test_F1_macro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='macro')
 
         ## Confusion Matrix
-        self.test_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass",normalize='true')
+        self.test_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass")
 
     def forward(self, input_ids, entity_ids, entity_position_ids, attention_mask, entity_attention_mask):
         return self.model(input_ids=input_ids, attention_mask=attention_mask, entity_ids=entity_ids, 
@@ -80,75 +84,80 @@ class LukeREmodel(pl.LightningModule):
     def training_step(self,batch,batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
         self.log("training_loss",loss)
+        self.log("training_loss_on_epoch",loss,on_epoch=True,on_step=False)
+        self.train_F1_macro(preds,labels)
+        self.log(
+            "train_F1_macro", self.train_F1_macro,prog_bar=True,on_epoch=True, on_step=False
+        )
+        self.train_F1_micro(preds,labels)
+        self.log(
+            "train_F1_micro", self.train_F1_micro, prog_bar=True, on_epoch=True, on_step=False
+        )
         return loss
     
     def validation_step(self, batch, batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
-        self.log('val_loss',loss)
-        self.val_accuracy.update(preds,labels)
-        self.val_precision.update(preds,labels)
-        self.val_recall.update(preds,labels)
-        self.val_F1.update(preds,labels)
-        self.val_precision_micro.update(preds,labels)
-        self.val_recall_micro.update(preds,labels)
-        self.val_F1_micro.update(preds,labels)
-        self.val_precision_macro.update(preds,labels)
-        self.val_recall_macro.update(preds,labels)
-        self.val_F1_macro.update(preds,labels)
-        self.val_cm.update(preds,labels)
+        self.log('val_loss',loss, prog_bar=True)
+        self.val_F1_micro(preds,labels)
+        self.log(
+            "val_F1_micro", self.val_F1_micro, prog_bar=True, on_epoch=True, on_step=False
+        )
+        self.val_F1_macro(preds,labels)
+        self.log(
+            "val_F1_macro", self.val_F1_macro,prog_bar=True,on_epoch=True, on_step=False
+        )
+        self.val_cm(preds,labels)
         return loss
     
     def on_validation_epoch_end(self):
-        val_P_class = self.val_precision.compute()
-        val_R_class = self.val_recall.compute()
-        val_F_class = self.val_F1.compute()
-        for i, (F, P, R) in enumerate(zip(val_F_class,val_P_class,val_R_class)):
-            self.log(f'val_F_class_{i}', F, on_epoch=True, prog_bar=True)
-            self.log(f'val_P_class_{i}', P, on_epoch=True, prog_bar=True)
-            self.log(f'val_R_class_{i}', F, on_epoch=True, prog_bar=True)
-        self.log('val_accuracy_micro',self.val_accuracy_micro.compute())
-        self.log('val_precision_micro',self.val_precision_micro.compute())
-        self.log('val_recall_micro',self.val_recall_micro.compute())
-        self.log('val_F1_micro',self.val_F1_micro.compute())
-        self.log('val_accuracy_macro',self.val_accuracy_macro.compute())
-        self.log('val_precision_macro',self.val_precision_macro.compute())
-        self.log('val_recall_macro',self.val_recall_macro.compute())
-        self.log('val_F1_macro',self.val_F1_macro.compute())
-        fig,ax = self.val_cm.plot(add_text=True)
-        wandb.log({'val_confusion_matrix' : [wandb.Image(fig)]})
-        plt.close(fig)
-
-        self.val_accuracy.reset()
-        self.val_precision.reset()
-        self.val_recall.reset()
-        self.val_F1.reset()
-
-        self.val_accuracy_micro.reset()
-        self.val_precision_micro.reset()
-        self.val_recall_micro.reset()
-        self.val_F1_micro.reset()
-
-        self.val_accuracy_macro.reset()
-        self.val_precision_macro.reset()
-        self.val_recall_macro.reset()
-        self.val_F1_macro.reset()
-
-        self.val_cm.reset()
+        wandb.log({'val_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
+            probs=None,
+            y_true=self.val_cm.y_true,
+            preds=self.val_cm.y_pred,
+            class_names=list(self.id2label.values())
+        )})
     
     def test_step(self, batch, batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
-        self.log('test_loss',loss)
-        self.test_accuracy.update(preds,labels)
-        self.test_precision.update(preds,labels)
-        self.test_recall.update(preds,labels)
-        self.test_F1.update(preds,labels)
-        self.test_precision_micro.update(preds,labels)
-        self.test_recall_micro.update(preds,labels)
-        self.test_F1_micro.update(preds,labels)
-        self.test_precision_macro.update(preds,labels)
-        self.test_recall_macro.update(preds,labels)
-        self.test_F1_macro.update(preds,labels)
-        self.test_cm.update(preds,labels)
+        self.test_accuracy(preds,labels)
+        self.test_precision(preds,labels)
+        self.test_recall(preds,labels)
+        self.test_F1(preds,labels)
+
+        self.test_accuracy_micro(preds,labels)
+        self.log(
+            "test_accuracy_micro", self.test_accuracy_micro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_precision_micro(preds,labels)
+        self.log(
+            "test_precision_micro", self.test_precision_micro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_recall_micro(preds,labels)
+        self.log(
+            "test_recall_micro", self.test_recall_micro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_F1_micro(preds,labels)
+        self.log(
+            "test_F1_micro", self.test_F1_micro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+
+        self.test_accuracy_macro(preds,labels)
+        self.log(
+            "test_accuracy_macro", self.test_accuracy_macro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_precision_macro(preds,labels)
+        self.log(
+            "test_precision_macro", self.test_precision_macro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_recall_macro(preds,labels)
+        self.log(
+            "test_recall_macro", self.test_recall_macro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_F1_macro(preds,labels)
+        self.log(
+            "test_F1_macro", self.test_F1_macro,prog_bar=True,on_epoch=True, on_step=False,
+        )
+        self.test_cm(preds,labels)
         return loss
     
     def on_test_epoch_end(self):
@@ -158,35 +167,13 @@ class LukeREmodel(pl.LightningModule):
         for i, (F, P, R) in enumerate(zip(test_F_class,test_P_class,test_R_class)):
             self.log(f'test_F_class_{i}', F, on_epoch=True, prog_bar=True)
             self.log(f'test_P_class_{i}', P, on_epoch=True, prog_bar=True)
-            self.log(f'test_R_class_{i}', F, on_epoch=True, prog_bar=True)
-        self.log('test_accuracy_micro',self.test_accuracy_micro.compute())
-        self.log('test_precision_micro',self.test_precision_micro.compute())
-        self.log('test_recall_micro',self.test_recall_micro.compute())
-        self.log('test_F1_micro',self.test_F1_micro.compute())
-        self.log('test_accuracy_macro',self.test_accuracy_macro.compute())
-        self.log('test_precision_macro',self.test_precision_macro.compute())
-        self.log('test_recall_macro',self.test_recall_macro.compute())
-        self.log('test_F1_macro',self.test_F1_macro.compute())
-        fig,ax = self.test_cm.plot(add_text=True)
-        wandb.log({'test_confusion_matrix' : [wandb.Image(fig)]})
-        plt.close(fig)
-
-        self.test_accuracy.reset()
-        self.test_precision.reset()
-        self.test_recall.reset()
-        self.test_F1.reset()
-
-        self.test_accuracy_micro.reset()
-        self.test_precision_micro.reset()
-        self.test_recall_micro.reset()
-        self.test_F1_micro.reset()
-
-        self.test_accuracy_macro.reset()
-        self.test_precision_macro.reset()
-        self.test_recall_macro.reset()
-        self.test_F1_macro.reset()
-        
-        self.test_cm.reset()
+            self.log(f'test_R_class_{i}', R, on_epoch=True, prog_bar=True)
+        wandb.log({'test_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
+            probs=None,
+            y_true=self.test_cm.y_true,
+            preds=self.test_cm.y_pred,
+            class_names=list(self.id2label.values())
+        )})
 
     def configure_optimizers(self):
         return AdamW(self.parameters(),lr=self.learning_rate)

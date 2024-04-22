@@ -8,9 +8,9 @@
 #SBATCH --time=0-01:00
 #SBATCH --mail-user shapiroa2@vcu.edu
 #SBATCH --mail-type=ALL
-#SBATCH --output=species_baseline.log
+#SBATCH --output=LUKE.log
 
-module load anaconda3
+module load miniconda3
 conda activate py311
 srun python -m src.trainer
 

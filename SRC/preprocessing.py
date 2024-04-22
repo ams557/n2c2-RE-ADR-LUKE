@@ -8,7 +8,7 @@ import os,sys, io
 from io import FileIO
 import re, fnmatch
 import csv
-from src.utils.helpers import *
+from src.utils.text_utils import *
 from tqdm import tqdm
 
 class InvalidAnnotationError(ValueError):
