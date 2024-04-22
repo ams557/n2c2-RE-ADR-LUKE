@@ -18,6 +18,7 @@ if __name__ == "__main__":
     id2label = dict()
     for idx, label in enumerate(dataset['train'].string_id.value_counts().index):
         id2label[idx] = label
+    
     label2id = {v:k for k,v in id2label.items()}
     num_labels = len(label2id)
 
