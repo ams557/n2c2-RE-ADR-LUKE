@@ -5,13 +5,15 @@
 If on local machine, run...
 
 ```bash
-python -m src.trainer.py
+$ python -m src.trainer.py
 ```
 
 If using SLURM, run...
 
 ```bash
-sbatch run_LUKE_2018n2c2-task2_RE.sh
+$ sbatch run_LUKE_2018n2c2-task2_RE.sh
 ```
 
-# Using the Trained Model
+## Using the Trained Model
+
+To evaluate the trained model load it from the checkpoint and predict via...
