@@ -115,7 +115,7 @@ class LukeREmodel(pl.LightningModule):
         self.val_preds = preds.detach().to('cpu').numpy()
         self.val_labels = labels.detach().to('cpu').numpy()
         self.val_y_true.extend(self.val_labels.tolist())
-        self.val_y_pred.extend(self.val_labels.tolist())
+        self.val_y_pred.extend(self.val_preds.tolist())
         return loss
     
     def on_validation_epoch_end(self):
