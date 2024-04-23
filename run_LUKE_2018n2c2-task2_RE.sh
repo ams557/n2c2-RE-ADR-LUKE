@@ -4,8 +4,8 @@
 #SBATCH --cpus-per-task=31
 #SBATCH --gpus=1
 #SBATCH --partition=gpu-a100
-#SBATCH --mem=59G
-#SBATCH --time=0-01:00
+#SBATCH --mem=100G
+#SBATCH --time=0-08:00
 #SBATCH --mail-user shapiroa2@vcu.edu
 #SBATCH --mail-type=ALL
 #SBATCH --output=LUKE.log
