@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+"""LUKE model
+
+Example:
+    To use this module, ensure the correct directory structure & import it::
+
+        >>> from src.models.pretrained.LUKE import LukeREmodel
+
+Sources:
+    * (LUKE Example) https://colab.research.google.com/github/NielsRogge/Transformers-Tutorials/blob/master/LUKE/Supervised_relation_extraction_with_LukeForEntityPairClassification.ipynb#scrollTo=hDkptorP9Koh
+    * (RELEX) https://github.com/NLPatVCU/RelEx/tree/master/relex
+    * (Lightning) https://lightning.ai/docs/pytorch/stable/
+"""
+
 from transformers import LukeForEntityPairClassification
 import pytorch_lightning as pl
 import torch
@@ -12,8 +26,24 @@ import matplotlib.pyplot as plt
 
 
 class LukeREmodel(pl.LightningModule):
+    """LUKE for entity-pair classification
+
+    Uses torchmetrics in combination with Weights & Biases to collect metrics.
+    
+    Args:
+        pl.LightningModule: Lightning module class
+    
+    - Adapted from LUKE Example & pytorch lightning & torchmetrics documentation
+    """
     def __init__(self, learning_rate, id2label):
-        super().__init__()
+        """Variable & metrics collection initialization 
+
+        Args:
+            learning_rate: Learning rate
+            id2label: Dictionary of ids & their corresponding labels
+        """
+
+        super().__init__() # inherit from lightning module
         self.id2label = id2label
         if len(self.id2label) == 0:
             raise ValueError("must provide num_labels.")
@@ -27,6 +57,7 @@ class LukeREmodel(pl.LightningModule):
         self.train_F1_macro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='macro')
 
         # Validation
+        ## store all predictions
         self.val_y_true = []
         self.val_y_pred = []
         ## Non-Averaged
@@ -51,6 +82,7 @@ class LukeREmodel(pl.LightningModule):
         self.val_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass")
 
         # Test
+        ## storing all predictions
         self.test_y_true = []
         self.test_y_pred = []
         self.test_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels,average=None)
@@ -74,10 +106,19 @@ class LukeREmodel(pl.LightningModule):
         self.test_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass")
 
     def forward(self, input_ids, entity_ids, entity_position_ids, attention_mask, entity_attention_mask):
+        """Forward propagation step
+        """
         return self.model(input_ids=input_ids, attention_mask=attention_mask, entity_ids=entity_ids, 
                             entity_attention_mask=entity_attention_mask, entity_position_ids=entity_position_ids)
 
     def common_step(self,batch,batch_idx):
+        """Shared step between training, testing, & validation splits
+
+        Returns:
+            loss: Cross entropy loss
+            predictions: Predicted labels
+            labels: Actual labels
+        """
         labels = batch['label']
         del batch['label']
         outputs = self(**batch)
@@ -87,6 +128,7 @@ class LukeREmodel(pl.LightningModule):
         return loss, preds, labels
 
     def training_step(self,batch,batch_idx):
+        """Training step. Includes logging."""
         loss, preds, labels = self.common_step(batch,batch_idx)
         self.log("training_loss",loss)
         self.log("training_loss_per_epoch",loss,on_epoch=True,on_step=False)
@@ -101,6 +143,7 @@ class LukeREmodel(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
+        """Validation step. Includes logging."""
         loss, preds, labels = self.common_step(batch,batch_idx)
         self.log('val_loss',loss, prog_bar=True)
         self.val_F1_micro(preds,labels)
@@ -119,7 +162,9 @@ class LukeREmodel(pl.LightningModule):
         return loss
     
     def on_validation_epoch_end(self):
-        # FIXME: True HTML table vs image
+        """Computes new confusion matrix & reinitializes predictions & labels.
+        """
+        # FIXME: Confusion matrix on W&B overlays new matrix on previous matrix
         wandb.log({'val_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
             y_true=self.val_y_true,
             y_pred=self.val_y_pred,
@@ -127,12 +172,15 @@ class LukeREmodel(pl.LightningModule):
         )})
         self.val_y_true = []
         self.val_y_pred = []
+        # Scott gave matplotlib version which is not being used anymore
         # fig, ax = self.val_cm.plot(add_text=True)
         # wandb.log({f'val_confusion_matrix': [wandb.Image(fig)]})
         # plt.close(fig)
 
     
     def test_step(self, batch, batch_idx):
+        """Test step. Includes logging.
+        """
         loss, preds, labels = self.common_step(batch,batch_idx)
         self.test_accuracy(preds,labels)
         self.test_precision(preds,labels)
@@ -168,7 +216,7 @@ class LukeREmodel(pl.LightningModule):
         self.log(
             "test_recall_macro", self.test_recall_macro,prog_bar=True,on_epoch=True, on_step=False,
         )
-        self.test_F1_macro(preds,labels)
+        selfß.test_F1_macro(preds,labels)
         self.log(
             "test_F1_macro", self.test_F1_macro,prog_bar=True,on_epoch=True, on_step=False,
         )
@@ -180,6 +228,8 @@ class LukeREmodel(pl.LightningModule):
         return loss
     
     def on_test_epoch_end(self):
+        """Computes new confusion matrix, reinitializes predictions & labels, & logs test metrics.
+        """
         test_P_class = self.test_precision.compute()
         test_R_class = self.test_recall.compute()
         test_F_class = self.test_F1.compute()
@@ -195,10 +245,12 @@ class LukeREmodel(pl.LightningModule):
         )})
         self.test_y_true = []
         self.test_y_pred = []
+        # Same confusion matrix from Scott below
         # fig, ax = self.test_cm.plot(add_text=True)
         # wandb.log({f'test_confusion_matrix': [wandb.Image(fig)]})
         # plt.close(fig)
 
     def configure_optimizers(self):
+        """Set up ADAM optimizer"""
         return AdamW(self.parameters(),lr=self.learning_rate)
 
