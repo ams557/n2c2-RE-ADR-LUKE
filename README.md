@@ -68,5 +68,6 @@ $ sbatch run_LUKE_2018n2c2-task2_RE.sh
 - [Supervised Relation Extraction with LukeForEntityPairClassification](https://colab.research.google.com/github/NielsRogge/Transformers-Tutorials/blob/master/LUKE/Supervised_relation_extraction_with_LukeForEntityPairClassification.ipynb#scrollTo=hDkptorP9Koh)
 - [Finetune a Relation Classifier with Transformers and LUKE](https://lajavaness.medium.com/finetune-a-relation-classifier-with-transformers-and-luke-6c649440c663)
 - [NLPatVCU/RelEx](https://github.com/NLPatVCU/RelEx)
+- [n2c2 2018 — Track 2: Adverse Drug Events and Medication Extraction in EHRs](https://portal.dbmi.hms.harvard.edu/projects/n2c2-2018-t2/)
 
 NOTE - References to specific solutions given in code.
