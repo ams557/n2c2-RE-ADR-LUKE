@@ -17,8 +17,8 @@ from experiments.n2c2.twenty18.task2.RE.config import MAX_EPOCHS
 
 def plot_json_logger(
     json_path: str, out_path: str, 
-    loss_names: lst[str,str] = ["training_loss_per_epoch", "val_loss"], 
-    eval_names: lst[str,str] =["train_F1_macro", "val_F1_macro"],
+    loss_names: list[str,str] = ["training_loss_per_epoch", "val_loss"], 
+    eval_names: list[str,str] =["train_F1_macro", "val_F1_macro"],
     ) -> None:
     """Plot validation & training loss & mF1 against one another & save figures.
 
