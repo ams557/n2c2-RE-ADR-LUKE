@@ -51,9 +51,6 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model=model,datamodule=dm)
-    # trainer.validate(model=model,datamodule=dm)
-
-    plot_json_logger(json_path=f"{trainer.logger.log_dir}/wandb-summary.json",out_path="../img/")
 
     trainer.test(model=model,datamodule=dm,ckpt_path="best")
 
