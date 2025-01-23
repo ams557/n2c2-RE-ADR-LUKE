@@ -11,6 +11,7 @@ import torchmetrics
 class LUKE(pl.LightningModule):
     def __init__(self,num_labels,learning_rate):
         super().__init__()
+        self.learning_rate = learning_rate
         self.model = LukeForEntityPairClassification.from_pretrained("studio-ousia/luke-base", num_labels=num_labels)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.val_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels)
@@ -109,7 +110,7 @@ class LUKE(pl.LightningModule):
         self.test_cm.reset()
 
     def configure_optimizers(self):
-        return AdamW(self.parameters(),lr=learning_rate)
+        return AdamW(self.parameters(),lr=self.learning_rate)
     def train_dataloader(self):
         return train_dataloader
     def val_dataloader(self):
