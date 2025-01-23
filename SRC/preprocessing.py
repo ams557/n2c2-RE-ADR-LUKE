@@ -53,7 +53,7 @@ def BRATtoDFconvert(path: str) -> pd.DataFrame:
         'relations' : pd.DataFrame()
     }
     # only grab files that are relevant to BRAT annotations
-    files = [file for file in os.listdir(path) if file.endswith('.ann')][1:2]
+    files = [file for file in os.listdir(path) if file.endswith('.ann')]
     # sort files 
     files.sort(key=lambda f : os.path.splitext(f)[1])
     for file in files:
