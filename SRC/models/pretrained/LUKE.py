@@ -27,6 +27,8 @@ class LukeREmodel(pl.LightningModule):
         self.train_F1_macro = torchmetrics.F1Score(task='multiclass',num_classes=num_labels,average='macro')
 
         # Validation
+        self.val_y_true = []
+        self.val_y_pred = []
         ## Non-Averaged
         self.val_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels,average=None)
         self.val_precision = torchmetrics.Precision(task='multiclass',num_classes=num_labels,average=None)
@@ -49,6 +51,8 @@ class LukeREmodel(pl.LightningModule):
         self.val_cm = torchmetrics.ConfusionMatrix(num_classes=num_labels,task="multiclass")
 
         # Test
+        self.test_y_true = []
+        self.test_y_pred = []
         self.test_accuracy = torchmetrics.Accuracy(task='multiclass',num_classes=num_labels,average=None)
         self.test_precision = torchmetrics.Precision(task='multiclass',num_classes=num_labels,average=None)
         self.test_recall = torchmetrics.Recall(task='multiclass',num_classes=num_labels,average=None)
@@ -110,15 +114,19 @@ class LukeREmodel(pl.LightningModule):
         self.val_cm(preds,labels)
         self.val_preds = preds.detach().to('cpu').numpy()
         self.val_labels = labels.detach().to('cpu').numpy()
+        self.val_y_true.extend(self.val_labels.tolist())
+        self.val_y_pred.extend(self.val_labels.tolist())
         return loss
     
     def on_validation_epoch_end(self):
         # FIXME: True HTML table vs image
         wandb.log({'val_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
-            y_true=self.val_labels,
-            y_pred=self.val_preds,
+            y_true=self.val_y_true,
+            y_pred=self.val_y_pred,
             labels=list(self.id2label.values())
         )})
+        self.val_y_true = []
+        self.val_y_pred = []
         # fig, ax = self.val_cm.plot(add_text=True)
         # wandb.log({f'val_confusion_matrix': [wandb.Image(fig)]})
         # plt.close(fig)
@@ -167,6 +175,8 @@ class LukeREmodel(pl.LightningModule):
         self.test_cm(preds,labels)
         self.test_preds = preds.detach().to('cpu').numpy()
         self.test_labels = labels.detach().to('cpu').numpy()
+        self.test_y_true.extend(self.test_labels.tolist())
+        self.test_y_pred.extend(self.test_preds.tolist())
         return loss
     
     def on_test_epoch_end(self):
@@ -179,10 +189,12 @@ class LukeREmodel(pl.LightningModule):
             self.log(f'test_R_class_{i}', R, on_epoch=True, prog_bar=True)
         # FIXME: Improve logging of CM in W&B
         wandb.log({'test_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
-            y_true=self.test_labels,
-            y_pred=self.test_preds,
+            y_true=self.test_y_true,
+            y_pred=self.test_y_pred,
             labels=list(self.id2label.values())
         )})
+        self.test_y_true = []
+        self.test_y_pred = []
         # fig, ax = self.test_cm.plot(add_text=True)
         # wandb.log({f'test_confusion_matrix': [wandb.Image(fig)]})
         # plt.close(fig)
