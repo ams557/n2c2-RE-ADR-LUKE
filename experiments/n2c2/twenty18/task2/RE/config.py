@@ -10,7 +10,6 @@ Sources:
     * (LUKE Example) https://colab.research.google.com/github/NielsRogge/Transformers-Tutorials/blob/master/LUKE/Supervised_relation_extraction_with_LukeForEntityPairClassification.ipynb#scrollTo=hDkptorP9Koh
 """
 
-from pathlib import Path
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 WANDB_key = "" # your W&B API Key Here
@@ -25,9 +24,7 @@ MAX_EPOCHS = 6
 DATA_DIR = 'datasets/n2c2/2018/task2/RE/'
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 TRAIN_DIR = DATA_DIR + 'train/'
-Path(TRAIN_DIR).mkdir(parents=True, exist_ok=True)
 TEST_DIR = DATA_DIR + 'test/'
-Path(TEST_DIR).mkdir(parents=True, exist_ok=True)
 VALID_SPLIT = 0.2
 NUM_WORKERS = 4
 

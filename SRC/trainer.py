@@ -13,6 +13,7 @@ Sources:
 """
 
 import torch
+from pathlib import Path
 import pytorch_lightning as pl
 from src.models.pretrained.LUKE import LukeREmodel
 from src.datamodules.LUKE.datamoduleRE import LUKE_RelationExtractionDataset, LUKE_N2C22018_Task2_RE_DataModule
@@ -23,6 +24,9 @@ from src.utils.shared_utils import plot_json_logger # not working & excluded
 
 
 if __name__ == "__main__":
+
+    Path(TRAIN_DIR).mkdir(parents=True, exist_ok=True)
+    Path(TEST_DIR).mkdir(parents=True, exist_ok=True)
 
     # create train & test datasets
     datasets = {
