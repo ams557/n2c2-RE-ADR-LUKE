@@ -11,7 +11,7 @@
 #SBATCH --output=species_baseline.log
 
 module load anaconda3
-conda activate testenv
+conda activate py311
 srun python -m src.trainer
 
 ## ** End Of SLURM Batch Commands **
