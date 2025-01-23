@@ -6,6 +6,7 @@ from torch.optim import AdamW
 import torchmetrics
 from experiments.n2c2.twenty18.task2.RE.config import WANDB_key
 import wandb
+import numpy as np
 wandb.login(key=WANDB_key)
 import matplotlib.pyplot as plt
 
@@ -14,10 +15,10 @@ class LukeREmodel(pl.LightningModule):
     def __init__(self, learning_rate, id2label):
         super().__init__()
         self.id2label = id2label
+        if len(self.id2label) == 0:
+            raise ValueError("must provide num_labels.")
         num_labels = len(self.id2label)
         self.learning_rate = learning_rate
-        if num_labels is None:
-            raise ValueError("must provide num_labels.")
         self.model = LukeForEntityPairClassification.from_pretrained("studio-ousia/luke-base", num_labels=num_labels)
         self.criterion = torch.nn.CrossEntropyLoss()
 
@@ -84,7 +85,7 @@ class LukeREmodel(pl.LightningModule):
     def training_step(self,batch,batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
         self.log("training_loss",loss)
-        self.log("training_loss_on_epoch",loss,on_epoch=True,on_step=False)
+        self.log("training_loss_per_epoch",loss,on_epoch=True,on_step=False)
         self.train_F1_macro(preds,labels)
         self.log(
             "train_F1_macro", self.train_F1_macro,prog_bar=True,on_epoch=True, on_step=False
@@ -107,15 +108,21 @@ class LukeREmodel(pl.LightningModule):
             "val_F1_macro", self.val_F1_macro,prog_bar=True,on_epoch=True, on_step=False
         )
         self.val_cm(preds,labels)
+        self.val_preds = preds.detach().to('cpu').numpy()
+        self.val_labels = labels.detach().to('cpu').numpy()
         return loss
     
     def on_validation_epoch_end(self):
+        # FIXME: True HTML table vs image
         wandb.log({'val_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
-            probs=None,
-            y_true=self.val_cm.y_true,
-            preds=self.val_cm.y_pred,
-            class_names=list(self.id2label.values())
+            y_true=self.val_labels,
+            y_pred=self.val_preds,
+            labels=list(self.id2label.values())
         )})
+        # fig, ax = self.val_cm.plot(add_text=True)
+        # wandb.log({f'val_confusion_matrix': [wandb.Image(fig)]})
+        # plt.close(fig)
+
     
     def test_step(self, batch, batch_idx):
         loss, preds, labels = self.common_step(batch,batch_idx)
@@ -158,6 +165,8 @@ class LukeREmodel(pl.LightningModule):
             "test_F1_macro", self.test_F1_macro,prog_bar=True,on_epoch=True, on_step=False,
         )
         self.test_cm(preds,labels)
+        self.test_preds = preds.detach().to('cpu').numpy()
+        self.test_labels = labels.detach().to('cpu').numpy()
         return loss
     
     def on_test_epoch_end(self):
@@ -168,12 +177,15 @@ class LukeREmodel(pl.LightningModule):
             self.log(f'test_F_class_{i}', F, on_epoch=True, prog_bar=True)
             self.log(f'test_P_class_{i}', P, on_epoch=True, prog_bar=True)
             self.log(f'test_R_class_{i}', R, on_epoch=True, prog_bar=True)
+        # FIXME: Improve logging of CM in W&B
         wandb.log({'test_confusion_matrix' : wandb.sklearn.plot_confusion_matrix(
-            probs=None,
-            y_true=self.test_cm.y_true,
-            preds=self.test_cm.y_pred,
-            class_names=list(self.id2label.values())
+            y_true=self.test_labels,
+            y_pred=self.test_preds,
+            labels=list(self.id2label.values())
         )})
+        # fig, ax = self.test_cm.plot(add_text=True)
+        # wandb.log({f'test_confusion_matrix': [wandb.Image(fig)]})
+        # plt.close(fig)
 
     def configure_optimizers(self):
         return AdamW(self.parameters(),lr=self.learning_rate)
