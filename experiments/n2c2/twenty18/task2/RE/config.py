@@ -1,7 +1,19 @@
+# -*- coding: utf-8 -*-
+"""File for setting up configuration variables
+
+Example:
+    To use this module, ensure the proper directory structre & import::
+
+        >>> from experiments.n2c2.twenty18.task2.RE.config import *
+
+Sources:
+    * (LUKE Example) https://colab.research.google.com/github/NielsRogge/Transformers-Tutorials/blob/master/LUKE/Supervised_relation_extraction_with_LukeForEntityPairClassification.ipynb#scrollTo=hDkptorP9Koh
+"""
+
 from pathlib import Path
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-WANDB_key = "3f4a097a574f34b0356bb664fb479ba2c4217659"
+WANDB_key = "" # your W&B API Key Here
 
 # Training Hyperparameters
 LEARNING_RATE = 1e-5
