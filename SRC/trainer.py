@@ -2,10 +2,10 @@ import torch
 import pytorch_lightning as pl
 from src.models.pretrained.LUKE import LukeREmodel
 from src.datamodules.LUKE.datamoduleRE import LUKE_RelationExtractionDataset, LUKE_N2C22018_Task2_RE_DataModule
-from experiments.n2c2.twenty18.task2.RE.config import TRAIN_DIR, TEST_DIR, VALID_SPLIT, BATCH_SIZE, NUM_WORKERS, RANDOM_STATE, LEARNING_RATE, ACCELERATOR, DEVICES, MIN_EPOCHS, MAX_EPOCHS, WANDB_LOGGER, EARLY_STOPPING_CALLBACK
+from experiments.n2c2.twenty18.task2.RE.config import TRAIN_DIR, TEST_DIR, VALID_SPLIT, BATCH_SIZE, NUM_WORKERS, RANDOM_STATE, LEARNING_RATE, ACCELERATOR, DEVICES, MIN_EPOCHS, MAX_EPOCHS, WANDB_LOGGER, CALLBACKS
 from transformers import LukeTokenizer
 from src.preprocessing import *
-
+from src.utils.shared_utils import plot_json_logger
 
 
 if __name__ == "__main__":
@@ -46,10 +46,13 @@ if __name__ == "__main__":
         min_epochs=MIN_EPOCHS,
         max_epochs=MAX_EPOCHS,
         logger=WANDB_LOGGER,
-        callbacks=[EARLY_STOPPING_CALLBACK]
+        callbacks=CALLBACKS
     )
 
-    trainer.fit(model,dm)
-    trainer.validate(model,dm)
-    trainer.test(model,dm)
+    trainer.fit(model=model,datamodule=dm)
+    # trainer.validate(model=model,datamodule=dm)
+
+    plot_json_logger(json_path=f"{trainer.logger.log_dir}/wandb-summary.json",out_path="../img/")
+
+    trainer.test(model=model,datamodule=dm,ckpt_path="best")
 
