@@ -47,8 +47,9 @@ def BRATtoDFconvert(path):
         df['BOS_idx'] = df.apply(lambda row : find_BOS_index(row['original_article'],row['start_idx']),axis=1)
         df['entity_spans'] = df.apply(lambda row : np.array([norm_list(row['relation_start'],row['BOS_idx']),norm_list(row['relation_end'],row['BOS_idx'])],dtype=object),axis=1)
         cols = ['end_idx', 'entities','entity_spans','match','original_article','sentences','start_idx','string_id']
-        df = df[cols]
-        return df.astype(object)
+        df = df[cols].astype(object)
+        df.reset_index(drop=True,inplace=True)
+        return df
     return annotations['entities']
 
 def grab_entity_info(line):
