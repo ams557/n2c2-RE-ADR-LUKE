@@ -1,6 +1,3 @@
-import nltk
-nltk.download('punkt')
-from nltk.tokenize import sent_tokenize
 import pandas as pd
 import pickle as pkl
 from collections import defaultdict, Counter
@@ -11,7 +8,7 @@ import os,sys, io
 from io import FileIO
 import re, fnmatch
 import csv
-from utils.helpers import *
+from src.utils.helpers import *
 from tqdm import tqdm
 
 class InvalidAnnotationError(ValueError):
